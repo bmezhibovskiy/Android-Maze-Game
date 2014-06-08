@@ -1,0 +1,5 @@
+<resources>
+   <declare-styleable name="MazeGameView">
+       <attr name="testAttr" format="string" />
+   </declare-styleable>
+</resources>

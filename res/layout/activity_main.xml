@@ -1,0 +1,13 @@
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:test="http://schemas.android.com/apk/res/com.bmezhibovskiy.mazegame"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="${packageName}.${activityClass}" >
+    
+    <com.bmezhibovskiy.mazegame.MazeGameView 
+    	android:layout_width="match_parent"
+    	android:layout_height="match_parent"
+       	test:testAttr = "Test" />
+
+</RelativeLayout>
