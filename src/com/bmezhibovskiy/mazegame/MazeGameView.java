@@ -46,6 +46,8 @@ public class MazeGameView extends View {
 		uiTextStrokePaint.setColor(Color.BLACK);
 		coinPaint = new Paint();
 		coinPaint.setARGB(255,180,190,0);
+		bombPaint = new Paint();
+		bombPaint.setColor(Color.GRAY);
 
 		/** Boilerplate code for getting attributes out of the XML **/
 		TypedArray a = context.getTheme().obtainStyledAttributes(
@@ -108,6 +110,9 @@ public class MazeGameView extends View {
 		for(PointF coin : coins) {
 			canvas.drawCircle(coin.x,coin.y,coinRadius,coinPaint);
 		}
+		for(PointF bomb : bombs) {
+			canvas.drawCircle(bomb.x,bomb.y,bombRadius,bombPaint);
+		}
 		canvas.drawCircle(heroCenter.x, heroCenter.y, heroRadius, heroPaint);
 		
 		canvas.drawText("S", startLocation.x, startLocation.y, floorTextPaint);
@@ -118,6 +123,8 @@ public class MazeGameView extends View {
 		}
 		canvas.drawText("Score: "+Integer.toString(score),10,20,uiTextPaint);
 		canvas.drawText("Score: "+Integer.toString(score),10,20,uiTextStrokePaint);
+		canvas.drawText("Bombs: "+Integer.toString(heroBombsAvailable),260,20,uiTextPaint);
+		canvas.drawText("Bombs: "+Integer.toString(heroBombsAvailable),260,20,uiTextStrokePaint);
 	}
 
 	@Override
@@ -160,6 +167,14 @@ public class MazeGameView extends View {
 				}
 			}
 			
+			for(Iterator<PointF> bombIterator = bombs.iterator(); bombIterator.hasNext(); ) {
+				if(Math2DUtilities.circleIntersection(heroCenter, heroRadius, bombIterator.next(), coinRadius)) {
+					bombIterator.remove();
+					++heroBombsAvailable;
+					break;
+				}
+			}
+			
 			if(Math2DUtilities.pointInCircle(finishLocation.x,finishLocation.y, heroCenter, heroRadius)) {
 				winLevel();
 			}
@@ -186,6 +201,7 @@ public class MazeGameView extends View {
 	private Paint uiTextPaint;
 	private Paint uiTextStrokePaint;
 	private Paint coinPaint;
+	private Paint bombPaint;
 	private final float wallThickness = 10.0f;
 	private PointF heroCenter = new PointF();
 	private PointF circleVelocity = new PointF();
@@ -200,7 +216,10 @@ public class MazeGameView extends View {
 	private float wiggleRoom = heroRadius+wallThickness/2-difficulty;
 	private Set<LineSegment2D> walls;
 	private Set<PointF> coins;
+	private Set<PointF> bombs;
+	private int heroBombsAvailable = 1;
 	private float coinRadius = heroRadius/2.0f;
+	private float bombRadius = heroRadius/1.5f;
 	private PointF initialTapPoint;
 	private PointF currentTapPoint;
 	private Timer updateTimer = new Timer();
@@ -218,7 +237,8 @@ public class MazeGameView extends View {
 				startLocation.set(generator.getStartLocation());
 				finishLocation.set(generator.getFinishLocation());
 				walls = generator.getWalls();
-				coins = generator.getRandomRoomLocations(10, true);
+				coins = generator.getRandomRoomLocations((int) (Math.random()*5.0+8.0), true);
+				bombs = generator.getRandomRoomLocations((int) (Math.random()*3.0+1.0), true);
 				updateTimerTask = new UpdateTimerTask();
 				updateTimer.schedule(updateTimerTask, 0, 33);
 			}
