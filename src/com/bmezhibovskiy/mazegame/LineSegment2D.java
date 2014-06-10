@@ -3,12 +3,21 @@ package com.bmezhibovskiy.mazegame;
 import android.graphics.PointF;
 
 public class LineSegment2D {
-	public PointF a;
-	public PointF b;
+	public PointF a = null;
+	public PointF b = null;
 	
 	public LineSegment2D(float x1, float y1, float x2, float y2) {
 		a = new PointF(x1,y1);
 		b = new PointF(x2,y2);
+	}
+	
+	public LineSegment2D(PointF a, PointF b) {
+		if(a != null) {
+			this.a = new PointF(a.x,a.y);
+		}
+		if(b != null) {
+			this.b = new PointF(b.x,b.y);
+		}
 	}
 	
 	@Override

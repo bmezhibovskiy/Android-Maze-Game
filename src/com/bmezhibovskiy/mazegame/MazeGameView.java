@@ -26,9 +26,8 @@ public class MazeGameView extends View {
 		wallPaint = new Paint();
 		wallPaint.setStyle(Paint.Style.STROKE);
 		wallPaint.setStrokeWidth(wallThickness);
-		heroPaint = new Paint();
 		floorTextPaint = new Paint();
-		floorTextPaint.setTextSize(heroRadius*2.0f);
+		floorTextPaint.setTextSize(gameSize*2.0f);
 		inputIndicatorPaint = new Paint();
 		inputIndicatorPaint.setARGB(100, 100, 0, 75);
 		inputIndicatorPaint.setStyle(Paint.Style.STROKE);
@@ -73,9 +72,8 @@ public class MazeGameView extends View {
 			
 			if(initialTapPoint == null) {
 				initialTapPoint = new PointF(currentTapPoint.x, currentTapPoint.y);	
-			}
-			
-			circleAcceleration = new PointF(currentTapPoint.x - initialTapPoint.x, currentTapPoint.y - initialTapPoint.y);					
+			}			
+							
 			return true; //true means this event was handled
 		}
 		return super.onTouchEvent(event);		
@@ -113,7 +111,7 @@ public class MazeGameView extends View {
 		for(PointF bomb : bombs) {
 			canvas.drawCircle(bomb.x,bomb.y,bombRadius,bombPaint);
 		}
-		canvas.drawCircle(heroCenter.x, heroCenter.y, heroRadius, heroPaint);
+		hero.draw(canvas);
 		
 		canvas.drawText("S", startLocation.x, startLocation.y, floorTextPaint);
 		canvas.drawText("F", finishLocation.x, finishLocation.y, floorTextPaint);
@@ -123,8 +121,8 @@ public class MazeGameView extends View {
 		}
 		canvas.drawText("Score: "+Integer.toString(score),10,20,uiTextPaint);
 		canvas.drawText("Score: "+Integer.toString(score),10,20,uiTextStrokePaint);
-		canvas.drawText("Bombs: "+Integer.toString(heroBombsAvailable),260,20,uiTextPaint);
-		canvas.drawText("Bombs: "+Integer.toString(heroBombsAvailable),260,20,uiTextStrokePaint);
+		canvas.drawText("Bombs: "+Integer.toString(hero.getBombsAvailable()),260,20,uiTextPaint);
+		canvas.drawText("Bombs: "+Integer.toString(hero.getBombsAvailable()),260,20,uiTextStrokePaint);
 	}
 
 	@Override
@@ -141,26 +139,11 @@ public class MazeGameView extends View {
 
 		@Override
 		public void run() {
-			if(initialTapPoint == null) { //decelerate				
-				circleVelocity.set(circleVelocity.x*deccelerationMultiplier,circleVelocity.y*deccelerationMultiplier);
-				if(circleVelocity.length() < minSpeed) {
-					circleVelocity.set(0,0);
-				}
-			}
-			else {
-				circleVelocity.offset(circleAcceleration.x,circleAcceleration.y);
-				float circleVelocityLength = circleVelocity.length();
-				if(circleVelocityLength > maxSpeed) {
-					float multiplier = maxSpeed/circleVelocityLength;
-					circleVelocity.set(circleVelocity.x*multiplier,circleVelocity.y*multiplier);
-				}
-			}
-
-			heroCenter.x = heroCenter.x + circleVelocity.x;
-			heroCenter.y = heroCenter.y + circleVelocity.y;
+			
+			hero.update(new LineSegment2D(initialTapPoint,currentTapPoint));
 			
 			for(Iterator<PointF> coinIterator = coins.iterator(); coinIterator.hasNext(); ) {
-				if(Math2DUtilities.circleIntersection(heroCenter, heroRadius, coinIterator.next(), coinRadius)) {
+				if(hero.detectCoinCollision(coinIterator.next(), coinRadius)) {
 					coinIterator.remove();
 					++score;
 					break;
@@ -168,22 +151,18 @@ public class MazeGameView extends View {
 			}
 			
 			for(Iterator<PointF> bombIterator = bombs.iterator(); bombIterator.hasNext(); ) {
-				if(Math2DUtilities.circleIntersection(heroCenter, heroRadius, bombIterator.next(), coinRadius)) {
+				if(hero.detectAndResolveBombCollision(bombIterator.next(), bombRadius)) {
 					bombIterator.remove();
-					++heroBombsAvailable;
 					break;
 				}
 			}
 			
-			if(Math2DUtilities.pointInCircle(finishLocation.x,finishLocation.y, heroCenter, heroRadius)) {
+			if(hero.detectFinishCollision(finishLocation)) {
 				winLevel();
 			}
 			else {
 				for(LineSegment2D wall : walls) {
-					PointF currentOffset = wall.circleIntersectionResolutionOffset(heroCenter, heroRadius, wallThickness);
-					if(currentOffset != null) {
-						heroCenter.offset(currentOffset.x,currentOffset.y);
-					}
+					hero.detectAndResolveWallCollision(wall, wallThickness);
 				}
 				postInvalidate();
 			}
@@ -192,34 +171,27 @@ public class MazeGameView extends View {
 	}
 
 	@SuppressWarnings("unused")
+	private final float gameSize = 20;
 	private String mTitle;
 	private int score = 0;
 	private Paint wallPaint;
-	private Paint heroPaint;
 	private Paint floorTextPaint;
 	private Paint inputIndicatorPaint;
 	private Paint uiTextPaint;
 	private Paint uiTextStrokePaint;
 	private Paint coinPaint;
 	private Paint bombPaint;
-	private final float wallThickness = 10.0f;
-	private PointF heroCenter = new PointF();
-	private PointF circleVelocity = new PointF();
 	private PointF startLocation = new PointF();
 	private PointF finishLocation = new PointF();
-	private final float maxSpeed = 4.0f;
-	private final float minSpeed = 0.05f;
-	private PointF circleAcceleration = new PointF();
-	private final float deccelerationMultiplier = 0.8f;
-	private float heroRadius = 15;
+	private Hero hero;
 	private int difficulty = 5;
-	private float wiggleRoom = heroRadius+wallThickness/2-difficulty;
+	private final float wallThickness = gameSize/2.2f;
+	private float wiggleRoom = gameSize+wallThickness/2-difficulty;
 	private Set<LineSegment2D> walls;
 	private Set<PointF> coins;
 	private Set<PointF> bombs;
-	private int heroBombsAvailable = 1;
-	private float coinRadius = heroRadius/2.0f;
-	private float bombRadius = heroRadius/1.5f;
+	private float coinRadius = gameSize/2.0f;
+	private float bombRadius = gameSize/1.5f;
 	private PointF initialTapPoint;
 	private PointF currentTapPoint;
 	private Timer updateTimer = new Timer();
@@ -227,13 +199,13 @@ public class MazeGameView extends View {
 	
 	private void generateMaze(float width, float height) {
 
-		float cellSize = heroRadius * 2 + wiggleRoom * 2;
+		float cellSize = gameSize * 2 + wiggleRoom * 2;
 		
 		DepthFirstSearchMazeGenerator mazeGenerator = new DepthFirstSearchMazeGenerator();
 		mazeGenerator.generate(width, height, cellSize, cellSize, new MazeGeneratorDelegate() {			
 			@Override
 			public void mazeGenerationDidFinish(MazeGenerator generator) {
-				heroCenter.set(generator.getStartLocation());
+				hero = new Hero(generator.getStartLocation(), getContext().getAssets());
 				startLocation.set(generator.getStartLocation());
 				finishLocation.set(generator.getFinishLocation());
 				walls = generator.getWalls();
