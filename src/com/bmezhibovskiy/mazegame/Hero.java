@@ -44,11 +44,11 @@ public class Hero {
 	}
 	
 	public boolean detectCoinCollision(PointF coinCenter, float coinRadius) {
-		return Math2DUtilities.circleIntersection(center, radius, coinCenter, coinRadius);
+		return Math2D.circleIntersection(center, radius, coinCenter, coinRadius);
 	}
 	
 	public boolean detectAndResolveBombCollision(PointF bombCenter, float bombRadius) {
-		if(Math2DUtilities.circleIntersection(center, radius, bombCenter, bombRadius)) {
+		if(Math2D.circleIntersection(center, radius, bombCenter, bombRadius)) {
 			++bombsAvailable;
 			return true;
 		}
@@ -56,14 +56,17 @@ public class Hero {
 	}
 	
 	public boolean detectFinishCollision(PointF finishLocation) {
-		return Math2DUtilities.pointInCircle(finishLocation.x,finishLocation.y, center, radius);		
+		return Math2D.pointInCircle(finishLocation.x,finishLocation.y, center, radius);		
 	}
 	
 	public void draw(android.graphics.Canvas canvas) {
 		int animationFrameIndex = 0;
 		//TODO: Idle animation
 		if(Math.abs(velocity.x) > minSpeed || Math.abs(velocity.y) > minSpeed) {
-			animationFrameIndex = (drawCounter/drawsPerAnimationFrame) % moveAnimationNumFrames;
+			animationFrameIndex = (drawCounter/moveAnimationDrawsPerFrame) % moveAnimationNumFrames;
+		}
+		else {
+			animationFrameIndex = (drawCounter/idleAnimationDrawsPerFrame) % idleAnimationNumFrames;
 		}
 		int srcLeft = spriteWidth * animationFrameIndex;
 		Rect src = new Rect(srcLeft,0,srcLeft+spriteWidth,spriteHeight);
@@ -77,47 +80,56 @@ public class Hero {
 	
 	public void update(LineSegment2D inputVector) {
 		
-		if(inputVector == null || inputVector.a == null) { //decelerate				
-			velocity.set(velocity.x*deccelerationMultiplier,velocity.y*deccelerationMultiplier);
-			if(velocity.length() < minSpeed) {
+		if(inputVector == null || inputVector.a == null) {
+			if(velocity.length() > minSpeed) {
+				PointF brakeForce = Math2D.scale(Math2D.normalize(velocity),-brakeForceMagnitude);
+				velocity = Math2D.add(velocity, brakeForce);
+			}
+			else {
 				velocity.set(0,0);
 			}
+			inputVector = new LineSegment2D(0,0,0,0);
 		}
-		else {
-			acceleration = new PointF(inputVector.b.x - inputVector.a.x, inputVector.b.y - inputVector.a.y);
-			velocity.offset(acceleration.x,acceleration.y);
-			float circleVelocityLength = velocity.length();
-			if(circleVelocityLength > maxSpeed) {
-				float multiplier = maxSpeed/circleVelocityLength;
-				velocity.set(velocity.x*multiplier,velocity.y*multiplier);
+		{
+			PointF acceleration = Math2D.scale(Math2D.subtract(inputVector.b, inputVector.a), accelerationScale);			
+			velocity = Math2D.add(velocity, acceleration);
+			
+			if(velocity.length() > 0.0f) {
+				float dragMagnitude = 0.5f*Math2D.lengthSquared(velocity)*dragCoefficient;
+				PointF drag = Math2D.scale(Math2D.normalize(velocity),-dragMagnitude);
+				velocity = Math2D.add(velocity, drag);
 			}
 			
-			PointF directionVector = new PointF(inputVector.b.x-inputVector.a.x, inputVector.b.y-inputVector.a.y);
-			rotationInDegrees = (float) (Math.atan2(directionVector.y, directionVector.x) * 180/Math.PI);
+			
+			PointF directionVector = Math2D.subtract(inputVector.b, inputVector.a);
+			if(directionVector.length() > 0.0f) {
+				rotationInDegrees = (float) (Math.atan2(directionVector.y, directionVector.x) * 180/Math.PI);
+			}
 		}
 
-		center.x = center.x + velocity.x;
-		center.y = center.y + velocity.y;
-		
-		
+		center = Math2D.add(center,velocity);
 	}
 	
 	Bitmap spriteSheet;
 	private float rotationInDegrees = 0.0f;
 	private int drawCounter = 0;
 	private final int moveAnimationNumFrames = 8;
-	private final int drawsPerAnimationFrame = 2;
+	private final int idleAnimationNumFrames = 2;
+	private final int moveAnimationDrawsPerFrame = 2;
+	private final int idleAnimationDrawsPerFrame = 14;
 	private final int spriteWidth = 128;
 	private final int spriteHeight = 128;
+	
+	private final float dragCoefficient = 0.05f;
 	
 	private Paint heroPaint = new Paint();
 
 	private PointF center = new PointF();
 	private PointF velocity = new PointF();
-	private PointF acceleration = new PointF();
-	private final float deccelerationMultiplier = 0.8f;
+	private final float accelerationScale = 0.002f;
 	private final float maxSpeed = 4.0f;
 	private final float minSpeed = 0.05f;
+	private final float brakeForceMagnitude = 0.1f;
 
 	private int bombsAvailable = 1;
 

@@ -31,12 +31,11 @@ public class LineSegment2D {
 
 	// http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html
 	public PointF closestPointToCircle(PointF c, float r) {
-
-		PointF seg_v = new PointF(b.x-a.x,b.y-a.y);
-		PointF pt_v = new PointF(c.x-a.x,c.y-a.y);
+		PointF seg_v = Math2D.subtract(b, a);
+		PointF pt_v = Math2D.subtract(c,a);
 		float seg_v_length = seg_v.length();
-		PointF seg_v_normalized = new PointF(seg_v.x/seg_v_length, seg_v.y/seg_v_length);
-		float proj_v_length = pt_v.x*seg_v_normalized.x + pt_v.y*seg_v_normalized.y;
+		PointF seg_v_normalized = Math2D.normalize(seg_v);
+		float proj_v_length = Math2D.dot(pt_v, seg_v_normalized);
 		PointF closest = new PointF();
 		if(proj_v_length < 0) {
 			closest.set(a);
@@ -45,8 +44,8 @@ public class LineSegment2D {
 			closest.set(b);
 		}
 		else  {
-			PointF proj_v = new PointF(seg_v_normalized.x*proj_v_length, seg_v_normalized.y*proj_v_length);
-			closest = new PointF(a.x+proj_v.x, a.y+proj_v.y);
+			PointF proj_v = Math2D.scale(seg_v_normalized, proj_v_length);
+			closest = Math2D.add(a, proj_v);
 		}
 
 		return closest;			
@@ -54,11 +53,11 @@ public class LineSegment2D {
 
 	public PointF circleIntersectionResolutionOffset(PointF c, float r, float lineThickness) {
 		PointF closest = closestPointToCircle(c, r);
-		PointF dist_v = new PointF(c.x-closest.x, c.y-closest.y);
+		PointF dist_v = Math2D.subtract(c, closest);
 		if(dist_v.length() < r+lineThickness/2) {
 			float dist_v_length = dist_v.length();
 			float multiplier = ((r-dist_v_length+lineThickness/2)/dist_v_length);
-			PointF offset = new PointF(dist_v.x*multiplier, dist_v.y*multiplier);
+			PointF offset = Math2D.scale(dist_v, multiplier);
 			return offset;
 		}
 		return null;

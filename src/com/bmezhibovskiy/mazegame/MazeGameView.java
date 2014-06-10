@@ -83,7 +83,8 @@ public class MazeGameView extends View {
 
 	@Override
 	protected void onDraw(android.graphics.Canvas canvas) {
-		super.onDraw(canvas);		
+		super.onDraw(canvas);
+		assert (walls != null) : "Walls must exist here.";
 		for(LineSegment2D wall : walls) {
 			//stretch the walls by half their thickness so the corners are nicer
 			float x1Offset = 0, y1Offset = 0, x2Offset = 0, y2Offset = 0;
