@@ -1,7 +1,5 @@
 package com.bmezhibovskiy.mazegame;
 
-import java.security.InvalidAlgorithmParameterException;
-
 import android.graphics.PointF;
 
 public class Math2D {
@@ -39,5 +37,36 @@ public class Math2D {
 	}
 	public static float lengthSquared(PointF a) {
 		return a.x*a.x + a.y*a.y;
+	}
+	public static PointF project(PointF a, PointF b) { //Project a onto b
+		float dotProduct = dot(a,b);
+		return scale(b, dotProduct/lengthSquared(b));
+	}
+	public static float angle(PointF a, PointF b) throws IllegalArgumentException { //In radians, between -pi and pi
+		float aLength = a.length();
+		float bLength = b.length();
+		if(aLength <= 0.0f) {
+			throw new IllegalArgumentException("Vector 'a' length is zero.");
+		}
+		if(bLength <= 0.0f) {
+			throw new IllegalArgumentException("Vector 'b' length is zero.");
+		}
+		double cosAngle = Math.max(-1.0, Math.min(1.0, dot(a,b)/(aLength*bLength)));
+		double angle = Math.acos(cosAngle);
+		
+		PointF perpendicularToB = new PointF(b.y,-b.x);
+		if(dot(a,perpendicularToB) < 0) {
+			angle = -angle;
+		}
+		return (float)angle;
+	}
+	public static PointF rotate(PointF v, float angle) throws IllegalArgumentException { //Angle is in radians
+		if(Float.isInfinite(angle)) {
+			throw new IllegalArgumentException("Angle is infinite.");
+		}
+		if(Float.isNaN(angle)) {
+			throw new IllegalArgumentException("Angle is not a number.");
+		}		
+		return new PointF((float)(v.x*Math.cos(angle) - v.y*Math.sin(angle)), (float)(v.x*Math.sin(angle) + v.y*Math.cos(angle)));
 	}
 }

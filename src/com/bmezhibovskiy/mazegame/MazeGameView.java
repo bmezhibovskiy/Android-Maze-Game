@@ -5,10 +5,7 @@ import java.util.Set;
 import java.util.Timer;
 import java.util.TimerTask;
 
-import com.bmezhibovskiy.mazegame.R;
-
 import android.content.Context;
-import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PointF;
@@ -47,19 +44,6 @@ public class MazeGameView extends View {
 		coinPaint.setARGB(255,180,190,0);
 		bombPaint = new Paint();
 		bombPaint.setColor(Color.GRAY);
-
-		/** Boilerplate code for getting attributes out of the XML **/
-		TypedArray a = context.getTheme().obtainStyledAttributes(
-				attrs,
-				R.styleable.MazeGameView,
-				0, 0);
-		try {
-			//Get the attributes here and set them to member variables
-			mTitle = a.getString(R.styleable.MazeGameView_testAttr);
-		} finally {
-			a.recycle();
-		}
-		/** Boilerplate End **/
 	}	
 
 	@Override
@@ -171,9 +155,7 @@ public class MazeGameView extends View {
 
 	}
 
-	@SuppressWarnings("unused")
 	private final float gameSize = 20;
-	private String mTitle;
 	private int score = 0;
 	private Paint wallPaint;
 	private Paint floorTextPaint;
