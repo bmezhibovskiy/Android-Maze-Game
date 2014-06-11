@@ -12,8 +12,9 @@ import android.util.Log;
 
 public class Hero {
 
-	public Hero(PointF location, AssetManager assets) {
+	public Hero(PointF location, float gameSize, AssetManager assets) {
 		center.set(location);
+		radius = gameSize;
 		InputStream spriteSheetStream = null;
 		try {
 			spriteSheetStream = assets.open("dragon_spritesheet.png");

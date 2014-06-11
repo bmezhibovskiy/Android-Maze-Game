@@ -9,6 +9,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.PointF;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.util.AttributeSet;
 import android.util.Log;
@@ -68,27 +69,31 @@ public class MazeGameView extends View {
 	@Override
 	protected void onDraw(android.graphics.Canvas canvas) {
 		super.onDraw(canvas);
+		canvas.save();
+		canvas.translate(-cameraPos.x + getWidth()/2.0f, -cameraPos.y + getHeight()/2.0f);
 		assert (walls != null) : "Walls must exist here.";
 		for(LineSegment2D wall : walls) {
-			//stretch the walls by half their thickness so the corners are nicer
-			float x1Offset = 0, y1Offset = 0, x2Offset = 0, y2Offset = 0;
-			if(wall.a.x < wall.b.x) {
-				x1Offset = -wallThickness/2.0f;
-				x2Offset = wallThickness/2.0f;
+			if(Math2D.pointInRect(wall.a, cameraRect()) || Math2D.pointInRect(wall.b, cameraRect())) {
+				//stretch the walls by half their thickness so the corners are nicer
+				float x1Offset = 0, y1Offset = 0, x2Offset = 0, y2Offset = 0;
+				if(wall.a.x < wall.b.x) {
+					x1Offset = -wallThickness/2.0f;
+					x2Offset = wallThickness/2.0f;
+				}
+				else if(wall.a.x > wall.b.x) {
+					x1Offset = wallThickness/2.0f;
+					x2Offset = -wallThickness/2.0f;				
+				}
+				else if(wall.a.y < wall.b.y) {
+					y1Offset = -wallThickness/2.0f;
+					y2Offset = wallThickness/2.0f;				
+				}
+				else if(wall.a.y > wall.b.y) {
+					y1Offset = wallThickness/2.0f;
+					y2Offset = -wallThickness/2.0f;				
+				}
+				canvas.drawLine(wall.a.x+x1Offset, wall.a.y+y1Offset, wall.b.x+x2Offset, wall.b.y+y2Offset, wallPaint);
 			}
-			else if(wall.a.x > wall.b.x) {
-				x1Offset = wallThickness/2.0f;
-				x2Offset = -wallThickness/2.0f;				
-			}
-			else if(wall.a.y < wall.b.y) {
-				y1Offset = -wallThickness/2.0f;
-				y2Offset = wallThickness/2.0f;				
-			}
-			else if(wall.a.y > wall.b.y) {
-				y1Offset = wallThickness/2.0f;
-				y2Offset = -wallThickness/2.0f;				
-			}
-			canvas.drawLine(wall.a.x+x1Offset, wall.a.y+y1Offset, wall.b.x+x2Offset, wall.b.y+y2Offset, wallPaint);			
 		}
 		for(PointF coin : coins) {
 			canvas.drawCircle(coin.x,coin.y,coinRadius,coinPaint);
@@ -101,6 +106,8 @@ public class MazeGameView extends View {
 		canvas.drawText("S", startLocation.x, startLocation.y, floorTextPaint);
 		canvas.drawText("F", finishLocation.x, finishLocation.y, floorTextPaint);
 		
+		canvas.restore();
+		
 		if(initialTapPoint != null && currentTapPoint != null) {
 			canvas.drawLine(initialTapPoint.x, initialTapPoint.y, currentTapPoint.x, currentTapPoint.y, inputIndicatorPaint);
 		}
@@ -108,6 +115,7 @@ public class MazeGameView extends View {
 		canvas.drawText("Score: "+Integer.toString(score),10,20,uiTextStrokePaint);
 		canvas.drawText("Bombs: "+Integer.toString(hero.getBombsAvailable()),260,20,uiTextPaint);
 		canvas.drawText("Bombs: "+Integer.toString(hero.getBombsAvailable()),260,20,uiTextStrokePaint);
+		
 	}
 
 	@Override
@@ -149,13 +157,37 @@ public class MazeGameView extends View {
 				for(LineSegment2D wall : walls) {
 					hero.detectAndResolveWallCollision(wall, wallThickness);
 				}
+				
+				PointF cameraAcceleration = Math2D.subtract(hero.getLocation(), cameraPos);
+				float heroDistanceFromCamera = cameraAcceleration.length();
+				if(heroDistanceFromCamera >= cameraMinDistance) {
+					cameraAcceleration = Math2D.normalize(cameraAcceleration);
+					float accelerationMagnitude = heroDistanceFromCamera * 0.02f;
+					cameraAcceleration = Math2D.scale(cameraAcceleration, accelerationMagnitude);
+					float cameraDragMagnitude = 0.6f;
+
+
+					cameraVelocity = Math2D.add(cameraVelocity, cameraAcceleration);
+
+					if(cameraVelocity.length() > 0.0f) {
+						PointF cameraDrag = Math2D.scale(Math2D.normalize(cameraVelocity), -cameraDragMagnitude);
+						cameraVelocity = Math2D.add(cameraVelocity, cameraDrag);
+					}
+					
+					cameraPos = Math2D.add(cameraPos, cameraVelocity);			
+				}
+				if(Math2D.subtract(hero.getLocation(),cameraPos).length() < cameraMinDistance) {
+					cameraVelocity.set(0,0);
+					cameraPos.set(hero.getLocation());
+				}
+				
 				postInvalidate();
 			}
 		}
 
 	}
 
-	private final float gameSize = 20;
+	private final float gameSize = 30;
 	private int score = 0;
 	private Paint wallPaint;
 	private Paint floorTextPaint;
@@ -179,17 +211,21 @@ public class MazeGameView extends View {
 	private PointF currentTapPoint;
 	private Timer updateTimer = new Timer();
 	private UpdateTimerTask updateTimerTask;
+	private PointF cameraPos = new PointF();
+	private PointF cameraVelocity = new PointF();
+	private float cameraMinDistance = 1.001f;
 	
-	private void generateMaze(float width, float height) {
+	private void generateMaze(float screenWidth, float screenHeight) {
 
 		float cellSize = gameSize * 2 + wiggleRoom * 2;
 		
 		DepthFirstSearchMazeGenerator mazeGenerator = new DepthFirstSearchMazeGenerator();
-		mazeGenerator.generate(width, height, cellSize, cellSize, new MazeGeneratorDelegate() {			
+		mazeGenerator.generate(screenWidth*3f, screenWidth*3f, cellSize, cellSize, new MazeGeneratorDelegate() { //Deliberately not using screenHeight for a square maze			
 			@Override
 			public void mazeGenerationDidFinish(MazeGenerator generator) {
-				hero = new Hero(generator.getStartLocation(), getContext().getAssets());
 				startLocation.set(generator.getStartLocation());
+				hero = new Hero(startLocation, gameSize, getContext().getAssets());
+				cameraPos.set(startLocation);
 				finishLocation.set(generator.getFinishLocation());
 				walls = generator.getWalls();
 				coins = generator.getRandomRoomLocations((int) (Math.random()*5.0+8.0), true);
@@ -210,5 +246,9 @@ public class MazeGameView extends View {
 		updateTimer.purge();
 		updateTimerTask = null;
 		generateMaze(getWidth(), getHeight());
+	}
+	
+	private RectF cameraRect() {
+		return new RectF(cameraPos.x-getWidth()/2.0f,cameraPos.y-getHeight()/2.0f,cameraPos.x+getWidth()/2.0f,cameraPos.y+getHeight()/2.0f);
 	}
 }

@@ -1,6 +1,7 @@
 package com.bmezhibovskiy.mazegame;
 
 import android.graphics.PointF;
+import android.graphics.RectF;
 
 public class Math2D {
 	
@@ -13,6 +14,10 @@ public class Math2D {
 	
 	public static boolean circleIntersection(PointF c1, float r1, PointF c2, float r2) {
 		return Math.sqrt((c2.y-c1.y)*(c2.y-c1.y) + (c2.x-c1.x)*(c2.x-c1.x)) < r1 + r2;
+	}
+	
+	public static boolean pointInRect(PointF p, RectF r) {
+		return r.contains(p.x, p.y);
 	}
 	
 	//Vector math methods
@@ -38,9 +43,13 @@ public class Math2D {
 	public static float lengthSquared(PointF a) {
 		return a.x*a.x + a.y*a.y;
 	}
-	public static PointF project(PointF a, PointF b) { //Project a onto b
+	public static PointF project(PointF a, PointF b) throws IllegalArgumentException { //Project a onto b
+		float lengthSquaredB = lengthSquared(b);
+		if(lengthSquaredB <= 0.0f) {
+			throw new IllegalArgumentException("Vector length of 'b' is zero.");
+		}
 		float dotProduct = dot(a,b);
-		return scale(b, dotProduct/lengthSquared(b));
+		return scale(b, dotProduct/lengthSquaredB);
 	}
 	public static float angle(PointF a, PointF b) throws IllegalArgumentException { //In radians, between -pi and pi
 		float aLength = a.length();
