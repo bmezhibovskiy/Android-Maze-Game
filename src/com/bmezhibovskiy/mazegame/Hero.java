@@ -76,9 +76,9 @@ public class Hero {
 		++drawCounter;
 	}
 
-	public void update(LineSegment2D inputSegment) {	
+	public void update(PointF inputVector) {	
 
-		if(inputSegment == null || inputSegment.a == null) {
+		if(inputVector == null) {
 			if(velocity.length() > minSpeed) {
 				PointF brakeForce = Math2D.scale(Math2D.normalize(velocity),-brakeForceMagnitude);
 				velocity = Math2D.add(velocity, brakeForce);
@@ -93,11 +93,11 @@ public class Hero {
 			else {
 				angularVelocity = 0.0f;
 			}
-			inputSegment = new LineSegment2D(0,0,0,0);
+			inputVector = new PointF(0,0);
 		}
 		
-		PointF inputVector = Math2D.subtract(inputSegment.b, inputSegment.a);
-				
+		
+		
 		if(inputVector.length() > 0) {
 			float angleBetweenInputAndFacing = Math2D.angle(inputVector,facing);
 			float angularAcceleration = -angleBetweenInputAndFacing * angularAccelerationScale;
@@ -111,7 +111,12 @@ public class Hero {
 
 		facing = Math2D.rotate(facing, angularVelocity);
 		
-		PointF acceleration = Math2D.scale(facing, inputVector.length()*accelerationScale);		
+		PointF acceleration = Math2D.scale(facing, inputVector.length()*accelerationScale);
+		float accelerationLength = acceleration.length();
+		if(accelerationLength > maxAccelerationLength) {
+			acceleration = Math2D.scale(acceleration,maxAccelerationLength/accelerationLength);
+		}
+
 		velocity = Math2D.add(velocity, acceleration);
 
 		if(velocity.length() > 0.0f) {
@@ -146,6 +151,7 @@ public class Hero {
 	private PointF facing = new PointF(1.0f,0.0f);
 	private float angularVelocity = 0;
 	private final float accelerationScale = 0.003f;
+	private final float maxAccelerationLength = 1.2f;
 	private final float angularAccelerationScale = 0.05f;
 	private final float minSpeed = 0.05f;
 	private final float minAngularSpeed = 0.005f;

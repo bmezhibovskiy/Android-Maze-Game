@@ -51,6 +51,7 @@ public class MazeGameView extends View {
 	public boolean onTouchEvent(MotionEvent event) {
 		if(event.getActionMasked() == MotionEvent.ACTION_UP) {
 			initialTapPoint = null;
+			currentTapPoint = null;
 		}
 		else {
 			currentTapPoint = new PointF(event.getX(), event.getY());
@@ -108,7 +109,7 @@ public class MazeGameView extends View {
 		
 		canvas.restore();
 		
-		if(initialTapPoint != null && currentTapPoint != null) {
+		if(isUserInputtingDirection()) {
 			canvas.drawLine(initialTapPoint.x, initialTapPoint.y, currentTapPoint.x, currentTapPoint.y, inputIndicatorPaint);
 		}
 		canvas.drawText("Score: "+Integer.toString(score),10,20,uiTextPaint);
@@ -133,7 +134,11 @@ public class MazeGameView extends View {
 		@Override
 		public void run() {
 			
-			hero.update(new LineSegment2D(initialTapPoint,currentTapPoint));
+			PointF inputVector = null;
+			if(isUserInputtingDirection()) {
+				inputVector = Math2D.subtract(currentTapPoint, initialTapPoint);
+			}
+			hero.update(inputVector);
 			
 			for(Iterator<PointF> coinIterator = coins.iterator(); coinIterator.hasNext(); ) {
 				if(hero.detectCoinCollision(coinIterator.next(), coinRadius)) {
@@ -166,17 +171,17 @@ public class MazeGameView extends View {
 					cameraAcceleration = Math2D.scale(cameraAcceleration, accelerationMagnitude);
 					float cameraDragMagnitude = 0.6f;
 
-
 					cameraVelocity = Math2D.add(cameraVelocity, cameraAcceleration);
-
-					if(cameraVelocity.length() > 0.0f) {
-						PointF cameraDrag = Math2D.scale(Math2D.normalize(cameraVelocity), -cameraDragMagnitude);
+					
+					float cameraVelocityLength = cameraVelocity.length();
+					if(cameraVelocityLength > 0.0f) {
+						PointF cameraDrag = Math2D.scale(Math2D.normalize(cameraVelocity), -Math.min(cameraVelocityLength, cameraDragMagnitude));
 						cameraVelocity = Math2D.add(cameraVelocity, cameraDrag);
 					}
 					
 					cameraPos = Math2D.add(cameraPos, cameraVelocity);			
 				}
-				if(Math2D.subtract(hero.getLocation(),cameraPos).length() < cameraMinDistance) {
+				else {
 					cameraVelocity.set(0,0);
 					cameraPos.set(hero.getLocation());
 				}
@@ -242,6 +247,7 @@ public class MazeGameView extends View {
 		walls = null;
 		coins = null;
 		initialTapPoint = null;
+		currentTapPoint = null;
 		updateTimerTask.cancel();
 		updateTimer.purge();
 		updateTimerTask = null;
@@ -250,5 +256,9 @@ public class MazeGameView extends View {
 	
 	private RectF cameraRect() {
 		return new RectF(cameraPos.x-getWidth()/2.0f,cameraPos.y-getHeight()/2.0f,cameraPos.x+getWidth()/2.0f,cameraPos.y+getHeight()/2.0f);
+	}
+	
+	private boolean isUserInputtingDirection() {
+		return initialTapPoint != null && currentTapPoint != null;
 	}
 }
