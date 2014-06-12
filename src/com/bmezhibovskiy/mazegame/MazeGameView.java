@@ -1,5 +1,6 @@
 package com.bmezhibovskiy.mazegame;
 
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.Timer;
@@ -30,6 +31,10 @@ public class MazeGameView extends View {
 		inputIndicatorPaint.setARGB(100, 100, 0, 75);
 		inputIndicatorPaint.setStyle(Paint.Style.STROKE);
 		inputIndicatorPaint.setStrokeWidth(16);
+		inputIndicatorPaint2 = new Paint();
+		inputIndicatorPaint2.setARGB(150, 255, 75, 0);
+		inputIndicatorPaint2.setStyle(Paint.Style.STROKE);
+		inputIndicatorPaint2.setStrokeWidth(16);
 		uiTextPaint = new Paint();
 		uiTextPaint.setTextSize(24);
 		uiTextPaint.setStyle(Paint.Style.FILL);
@@ -44,7 +49,7 @@ public class MazeGameView extends View {
 		coinPaint = new Paint();
 		coinPaint.setARGB(255,180,190,0);
 		bombPaint = new Paint();
-		bombPaint.setColor(Color.GRAY);
+		bombPaint.setColor(Color.RED);
 	}	
 
 	@Override
@@ -102,6 +107,9 @@ public class MazeGameView extends View {
 		for(PointF bomb : bombs) {
 			canvas.drawCircle(bomb.x,bomb.y,bombRadius,bombPaint);
 		}
+		for(Enemy enemy : enemies) {
+			enemy.draw(canvas);
+		}
 		hero.draw(canvas);
 		
 		canvas.drawText("S", startLocation.x, startLocation.y, floorTextPaint);
@@ -110,12 +118,19 @@ public class MazeGameView extends View {
 		canvas.restore();
 		
 		if(isUserInputtingDirection()) {
-			canvas.drawLine(initialTapPoint.x, initialTapPoint.y, currentTapPoint.x, currentTapPoint.y, inputIndicatorPaint);
+			LineSegment2D inputLineSegment1 = inputLineSegment1();
+			LineSegment2D inputLineSegment2 = inputLineSegment2();			
+			if(inputLineSegment2 != null) {
+				canvas.drawLine(inputLineSegment2.a.x, inputLineSegment2.a.y, inputLineSegment2.b.x, inputLineSegment2.b.y, inputIndicatorPaint2);
+			}
+			if(inputLineSegment1 != null) {
+				canvas.drawLine(inputLineSegment1.a.x, inputLineSegment1.a.y, inputLineSegment1.b.x, inputLineSegment1.b.y, inputIndicatorPaint);
+			}
 		}
 		canvas.drawText("Score: "+Integer.toString(score),10,20,uiTextPaint);
 		canvas.drawText("Score: "+Integer.toString(score),10,20,uiTextStrokePaint);
-		canvas.drawText("Bombs: "+Integer.toString(hero.getBombsAvailable()),260,20,uiTextPaint);
-		canvas.drawText("Bombs: "+Integer.toString(hero.getBombsAvailable()),260,20,uiTextStrokePaint);
+		canvas.drawText("Fire: "+Integer.toString((int)(hero.getBombsAvailable()*100.0f)),260,20,uiTextPaint);
+		canvas.drawText("Fire: "+Integer.toString((int)(hero.getBombsAvailable()*100.0f)),260,20,uiTextStrokePaint);
 		
 	}
 
@@ -132,13 +147,9 @@ public class MazeGameView extends View {
 	private class UpdateTimerTask extends TimerTask {
 
 		@Override
-		public void run() {
+		public void run() {			
 			
-			PointF inputVector = null;
-			if(isUserInputtingDirection()) {
-				inputVector = Math2D.subtract(currentTapPoint, initialTapPoint);
-			}
-			hero.update(inputVector);
+			hero.update(inputVector1(), inputVector2());
 			
 			for(Iterator<PointF> coinIterator = coins.iterator(); coinIterator.hasNext(); ) {
 				if(hero.detectCoinCollision(coinIterator.next(), coinRadius)) {
@@ -153,6 +164,17 @@ public class MazeGameView extends View {
 					bombIterator.remove();
 					break;
 				}
+			}
+			
+			for(Iterator<Enemy> enemyIterator = enemies.iterator(); enemyIterator.hasNext(); ) {
+				Enemy enemy = enemyIterator.next();
+				if(enemy.detectAndResolveCollisionWithHero(hero)) {
+					enemyIterator.remove();					
+				}
+				else {
+					enemy.update(walls, wallThickness);
+				}
+					
 			}
 			
 			if(hero.detectFinishCollision(finishLocation)) {
@@ -197,6 +219,7 @@ public class MazeGameView extends View {
 	private Paint wallPaint;
 	private Paint floorTextPaint;
 	private Paint inputIndicatorPaint;
+	private Paint inputIndicatorPaint2;
 	private Paint uiTextPaint;
 	private Paint uiTextStrokePaint;
 	private Paint coinPaint;
@@ -210,6 +233,7 @@ public class MazeGameView extends View {
 	private Set<LineSegment2D> walls;
 	private Set<PointF> coins;
 	private Set<PointF> bombs;
+	private Set<Enemy> enemies;
 	private float coinRadius = gameSize/2.0f;
 	private float bombRadius = gameSize/1.5f;
 	private PointF initialTapPoint;
@@ -219,6 +243,7 @@ public class MazeGameView extends View {
 	private PointF cameraPos = new PointF();
 	private PointF cameraVelocity = new PointF();
 	private float cameraMinDistance = 1.001f;
+	private final float maxInput1Length = 100.0f;
 	
 	private void generateMaze(float screenWidth, float screenHeight) {
 
@@ -235,6 +260,11 @@ public class MazeGameView extends View {
 				walls = generator.getWalls();
 				coins = generator.getRandomRoomLocations((int) (Math.random()*5.0+8.0), true);
 				bombs = generator.getRandomRoomLocations((int) (Math.random()*3.0+1.0), true);
+				Set<PointF> enemyLocations = generator.getRandomRoomLocations((int) (Math.random()*4.0+6.0), false);
+				enemies = new HashSet<Enemy>();
+				for(PointF location : enemyLocations) {
+					enemies.add(new Enemy(location,gameSize,getContext().getAssets()));
+				}
 				updateTimerTask = new UpdateTimerTask();
 				updateTimer.schedule(updateTimerTask, 0, 33);
 			}
@@ -246,6 +276,7 @@ public class MazeGameView extends View {
 	private void winLevel() {
 		walls = null;
 		coins = null;
+		enemies = null;
 		initialTapPoint = null;
 		currentTapPoint = null;
 		updateTimerTask.cancel();
@@ -260,5 +291,48 @@ public class MazeGameView extends View {
 	
 	private boolean isUserInputtingDirection() {
 		return initialTapPoint != null && currentTapPoint != null;
+	}
+
+	private PointF inputVector() {
+		if(isUserInputtingDirection()) {
+			return Math2D.subtract(currentTapPoint, initialTapPoint);
+		}
+		return null;
+	}
+
+	private PointF inputVector1() {
+		PointF vector = inputVector();
+		if(isUserInputtingDirection() && vector.length() > 0.0) {
+			if(vector.length() > maxInput1Length) {
+				vector = Math2D.scale(vector, maxInput1Length/vector.length());
+			}
+			return vector;
+		}
+		return null;
+	}	
+
+	private LineSegment2D inputLineSegment1() {
+		PointF inputVector1 = inputVector1();
+		if(inputVector1 != null) {
+			return new LineSegment2D(initialTapPoint.x, initialTapPoint.y, initialTapPoint.x+inputVector1.x, initialTapPoint.y+inputVector1.y);
+		}
+		return null;
+	}
+
+	private LineSegment2D inputLineSegment2() {
+		PointF inputVector = inputVector();
+		if(inputVector != null && inputVector.length() > maxInput1Length) {
+			PointF inputVector1 = inputVector1();
+			return new LineSegment2D(initialTapPoint.x+inputVector1.x, initialTapPoint.y+inputVector1.y, currentTapPoint.x, currentTapPoint.y);
+		}
+		return null;
+	}
+
+	private PointF inputVector2() {
+		LineSegment2D inputLineSegment2 = inputLineSegment2();
+		if(inputLineSegment2 != null) {
+			return Math2D.subtract(inputLineSegment2.b, inputLineSegment2.a);
+		}
+		return null;
 	}
 }

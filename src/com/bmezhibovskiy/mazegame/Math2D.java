@@ -20,6 +20,17 @@ public class Math2D {
 		return r.contains(p.x, p.y);
 	}
 	
+	public static boolean circleIntersectsRect(PointF center, float radius, RectF rect) {
+		if(pointInRect(center, rect)) {
+			return true;
+		}
+		LineSegment2D top = new LineSegment2D(rect.left, rect.top, rect.right, rect.top);
+		LineSegment2D left = new LineSegment2D(rect.left, rect.top, rect.left, rect.bottom);
+		LineSegment2D right = new LineSegment2D(rect.right, rect.top, rect.right, rect.bottom);
+		LineSegment2D bottom = new LineSegment2D(rect.left, rect.bottom, rect.right, rect.bottom);
+		return top.intersectsCircle(center, radius) || left.intersectsCircle(center, radius) || right.intersectsCircle(center, radius) || bottom.intersectsCircle(center, radius);
+	}
+	
 	//Vector math methods
 	public static PointF add(PointF a, PointF b) {
 		return new PointF(a.x+b.x,a.y+b.y);
@@ -69,13 +80,7 @@ public class Math2D {
 		}
 		return (float)angle;
 	}
-	public static PointF rotate(PointF v, float angle) throws IllegalArgumentException { //Angle is in radians
-		if(Float.isInfinite(angle)) {
-			throw new IllegalArgumentException("Angle is infinite.");
-		}
-		if(Float.isNaN(angle)) {
-			throw new IllegalArgumentException("Angle is not a number.");
-		}		
+	public static PointF rotate(PointF v, float angle) throws IllegalArgumentException { //Angle is in radians				
 		return new PointF((float)(v.x*Math.cos(angle) - v.y*Math.sin(angle)), (float)(v.x*Math.sin(angle) + v.y*Math.cos(angle)));
 	}
 }

@@ -32,6 +32,9 @@ public class LineSegment2D {
 	// http://doswa.com/2009/07/13/circle-segment-intersectioncollision.html
 	public PointF closestPointToCircle(PointF c, float r) {
 		PointF seg_v = Math2D.subtract(b, a);
+		if(seg_v.length() <= 0.0f) {
+			return new PointF(a.x,a.y);
+		}
 		PointF pt_v = Math2D.subtract(c,a);
 		float seg_v_length = seg_v.length();
 		PointF seg_v_normalized = Math2D.normalize(seg_v);
@@ -61,5 +64,9 @@ public class LineSegment2D {
 			return offset;
 		}
 		return null;
+	}
+	
+	public boolean intersectsCircle(PointF c, float r) {
+		return circleIntersectionResolutionOffset(c, r, 0) != null;
 	}
 }
