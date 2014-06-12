@@ -18,7 +18,10 @@ public class Hero {
 		InputStream spriteSheetStream = null;
 		try {
 			spriteSheetStream = assets.open("dragon_spritesheet.png");
-			spriteSheet = BitmapFactory.decodeStream(spriteSheetStream);
+			dragonSpriteSheet = BitmapFactory.decodeStream(spriteSheetStream);
+			spriteSheetStream.close();
+			spriteSheetStream = assets.open("flame_spritesheet.png");
+			flameSpriteSheet = BitmapFactory.decodeStream(spriteSheetStream);
 			spriteSheetStream.close();
 		} catch (IOException e) {
 			Log.wtf("Hero", e.getLocalizedMessage());
@@ -59,19 +62,38 @@ public class Hero {
 	}
 
 	public void draw(android.graphics.Canvas canvas) {
+		canvas.save();
+		canvas.rotate(rotationInDegrees()+90, center.x, center.y);
+		
 		int animationFrameIndex = 0;
+		float currentFireSize = fireSize();
+		if(currentFireSize > 0) {
+			animationFrameIndex = (drawCounter/fireAnimationDrawsPerFrame) % fireAnimationNumFrames;
+			int srcLeft = fireSpriteWidth * animationFrameIndex;
+			Rect src = new Rect(srcLeft,0,srcLeft+fireSpriteWidth,fireSpriteHeight);
+			float fireHalfWidth = currentFireSize*(fireWidth/2.0f);
+			float fireHalfHeight = currentFireSize*(fireHeight/2.0f);
+			PointF dstCenter = new PointF(center.x, center.y-radius-fireHalfHeight);
+			Rect dst = new Rect((int)(dstCenter.x-fireHalfWidth),(int)(dstCenter.y-fireHalfHeight), (int)(dstCenter.x+fireHalfWidth), (int)(dstCenter.y+fireHalfHeight));	
+			canvas.drawBitmap(flameSpriteSheet, src, dst, heroPaint);
+		}
+		
+		animationFrameIndex = 0;
 		if(Math.abs(velocity.x) > minSpeed || Math.abs(velocity.y) > minSpeed) {
 			animationFrameIndex = (drawCounter/moveAnimationDrawsPerFrame) % moveAnimationNumFrames;
 		}
 		else {
 			animationFrameIndex = (drawCounter/idleAnimationDrawsPerFrame) % idleAnimationNumFrames;
 		}
-		int srcLeft = spriteWidth * animationFrameIndex;
-		Rect src = new Rect(srcLeft,0,srcLeft+spriteWidth,spriteHeight);
-		Rect dst = new Rect((int)(center.x-radius),(int)(center.y-radius), (int)(center.x+radius), (int)(center.y+radius));
-		canvas.save();
-		canvas.rotate(rotationInDegrees()+90, center.x, center.y);
-		canvas.drawBitmap(spriteSheet, src, dst, heroPaint);
+		
+		int srcLeft = dragonSpriteWidth * animationFrameIndex;
+		Rect src = new Rect(srcLeft,0,srcLeft+dragonSpriteWidth,dragonSpriteHeight);
+		float sizeOffset = velocity.length()*0.4f;
+		float dragonHalfWidth = radius - sizeOffset;
+		float dragonHalfHeight = radius + sizeOffset;
+		Rect dst = new Rect((int)(center.x-dragonHalfWidth),(int)(center.y-dragonHalfHeight), (int)(center.x+dragonHalfWidth), (int)(center.y+dragonHalfHeight));		
+		canvas.drawBitmap(dragonSpriteSheet, src, dst, heroPaint);
+		
 		canvas.restore();
 		++drawCounter;
 	}
@@ -131,15 +153,25 @@ public class Hero {
 	private float rotationInDegrees() {
 		return (float) (Math.atan2(facing.y, facing.x) * 180/Math.PI);
 	}
+	
+	private float fireSize() {
+		float theFireSize = (velocity.length()-4.5f)/2.0f;
+		return velocity.length() > 4.5f ? theFireSize : 0.0f;
+	}
 
-	Bitmap spriteSheet;
+	Bitmap dragonSpriteSheet;
+	Bitmap flameSpriteSheet;
 	private int drawCounter = 0;
 	private final int moveAnimationNumFrames = 8;
 	private final int idleAnimationNumFrames = 2;
 	private final int moveAnimationDrawsPerFrame = 2;
 	private final int idleAnimationDrawsPerFrame = 14;
-	private final int spriteWidth = 128;
-	private final int spriteHeight = 128;
+	private final int dragonSpriteWidth = 128;
+	private final int dragonSpriteHeight = 128;
+	private final int fireAnimationNumFrames = 16;
+	private final int fireAnimationDrawsPerFrame = 1;
+	private final int fireSpriteWidth = 28;
+	private final int fireSpriteHeight = 51;	
 
 	private final float dragConstant = 0.125f;
 	private final float angularDragConstant = 0.2f;
@@ -161,5 +193,9 @@ public class Hero {
 	private int bombsAvailable = 1;
 
 	private float radius = 25;
+	
+	private float fireWidth = radius*0.5f;
+	private final float fireHeightStretchMultiplier = 2.4f;
+	private float fireHeight = fireHeightStretchMultiplier * fireWidth * (float)fireSpriteHeight/(float)fireSpriteWidth;
 
 }
